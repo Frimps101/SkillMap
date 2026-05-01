@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Light theme (default) ────────────────────────────── */
+:root {
+  --color-surface:           #f1f5f9;
+  --color-surface-secondary: #ffffff;
+  --color-surface-tertiary:  #e8edf4;
+  --color-surface-border:    #cbd5e1;
+}
+
+/* ── Dark theme ──────────────────────────────────────── */
+.dark {
+  --color-surface:           #0f1117;
+  --color-surface-secondary: #161b27;
+  --color-surface-tertiary:  #1e2535;
+  --color-surface-border:    #252d3d;
+}
+
+/* ── Light-mode text overrides ───────────────────────── */
+/* Tailwind text-white / grays ship as fixed values; we remap them in light. */
+html:not(.dark) .text-white           { color: #111827; }
+html:not(.dark) .text-gray-400        { color: #6b7280; }
+html:not(.dark) .text-gray-500        { color: #374151; }
+html:not(.dark) .text-gray-600        { color: #1f2937; }
+html:not(.dark) .hover\:text-white:hover { color: #111827; }
+html:not(.dark) .border-surface-border  { border-color: var(--color-surface-border); }
+html:not(.dark) .scrollbar-thumb        { background: #cbd5e1; }
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-border);
+    border-radius: 3px;
+  }
+}

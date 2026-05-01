@@ -1,0 +1,39 @@
+# Environment
+.env
+*.env.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+venv/
+.venv/
+
+# Django
+backend/staticfiles/
+backend/media/
+db.sqlite3
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Docker
+postgres_data/
+
+# IDE
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
