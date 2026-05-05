@@ -28,6 +28,10 @@ html:not(.dark) .hover\:text-white:hover { color: #111827; }
 html:not(.dark) .border-surface-border  { border-color: var(--color-surface-border); }
 html:not(.dark) .scrollbar-thumb        { background: #cbd5e1; }
 
+/* Keep text truly white when sitting on a coloured (brand) background */
+html:not(.dark) .bg-brand .text-white,
+html:not(.dark) .bg-brand.text-white   { color: #ffffff; }
+
 @layer base {
   * {
     box-sizing: border-box;

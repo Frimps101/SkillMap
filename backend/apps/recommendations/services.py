@@ -56,10 +56,18 @@ Format your response as JSON matching this shape:
 }}"""
 
     message = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-3-5-sonnet-20241022",
         max_tokens=2048,
         messages=[{"role": "user", "content": prompt}],
     )
     raw = message.content[0].text.strip()
+
+    # Strip markdown code fences if Claude wraps the JSON
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip()
+
     parsed = json.loads(raw)
     return {"raw": raw, "skills": parsed.get("skills", [])}
