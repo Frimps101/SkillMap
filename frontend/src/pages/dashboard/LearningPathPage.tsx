@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { api } from "../../api/axios";
+import { getStoredUser } from "../../store/authStore";
 
 interface SkillResource {
   title: string;
@@ -21,8 +23,24 @@ interface LearningPath {
   generated_at: string;
 }
 
+function BrainIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.5 2a2.5 2.5 0 0 1 2.5 2.5v.5h.5a2.5 2.5 0 0 1 0 5H12v.5a2.5 2.5 0 0 1-5 0V10h-.5a2.5 2.5 0 0 1 0-5H7V4.5A2.5 2.5 0 0 1 9.5 2z" />
+      <path d="M14.5 2a2.5 2.5 0 0 0-2.5 2.5v.5h-.5a2.5 2.5 0 0 0 0 5H12v.5a2.5 2.5 0 0 0 5 0V10h.5a2.5 2.5 0 0 0 0-5H17V4.5A2.5 2.5 0 0 0 14.5 2z" />
+      <path d="M12 15v7" />
+      <path d="M8 19h8" />
+    </svg>
+  );
+}
+
 export default function LearningPathPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const user = getStoredUser();
+
+  const hasProfile =
+    user?.profile?.current_role?.trim() && user?.profile?.target_role?.trim();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["learning-path"],
@@ -37,35 +55,27 @@ export default function LearningPathPage() {
       const { data } = await api.post("/api/recommendations/regenerate/");
       return data as LearningPath;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["learning-path"] }),
+    onSuccess: (newData) => {
+      queryClient.setQueryData(["learning-path"], newData);
+    },
   });
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4">
+      <div className="p-6 space-y-4 max-w-2xl">
         <div className="h-8 w-48 bg-surface-secondary rounded animate-pulse" />
+        <div className="h-4 w-72 bg-surface-secondary rounded animate-pulse" />
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-28 bg-surface-secondary rounded-xl animate-pulse" />
+          <div key={i} className="h-32 bg-surface-secondary rounded-xl animate-pulse" />
         ))}
       </div>
     );
   }
 
-  if (isError) {
-    return (
-      <div className="p-6 text-center py-20">
-        <p className="text-gray-400 mb-4">Failed to load your learning path.</p>
-        <button
-          onClick={() => regenerate.mutate()}
-          className="bg-brand text-white px-4 py-2 rounded-lg text-sm"
-        >
-          Generate my path
-        </button>
-      </div>
-    );
-  }
-
   const skills = data?.skills ?? [];
+  const generatedAt = data?.generated_at;
+  const isEmpty = !isError && skills.length === 0;
+  const showEmpty = isError || isEmpty;
 
   return (
     <div className="p-6 space-y-6 max-w-2xl">
@@ -76,29 +86,64 @@ export default function LearningPathPage() {
             Your personalized curriculum based on current market demands.
           </p>
         </div>
-        <button
-          onClick={() => regenerate.mutate()}
-          disabled={regenerate.isPending}
-          className="text-sm text-gray-400 border border-surface-border px-3 py-1.5 rounded-lg hover:text-white hover:border-gray-500 transition-colors disabled:opacity-50"
-        >
-          {regenerate.isPending ? "Regenerating…" : "Regenerate"}
-        </button>
-      </div>
-
-      {skills.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">
-          <p className="mb-4">No learning path generated yet.</p>
+        {!showEmpty && (
           <button
             onClick={() => regenerate.mutate()}
-            className="bg-brand text-white px-5 py-2.5 rounded-lg text-sm"
+            disabled={regenerate.isPending}
+            className="text-sm text-gray-400 border border-surface-border px-3 py-1.5 rounded-lg hover:text-white hover:border-gray-500 transition-colors disabled:opacity-50"
           >
-            Generate my path
+            {regenerate.isPending ? "Regenerating…" : "↻ Regenerate"}
           </button>
+        )}
+      </div>
+
+      {generatedAt && !showEmpty && (
+        <p className="text-xs text-gray-500 -mt-4">
+          Last generated {new Date(generatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+        </p>
+      )}
+
+      {showEmpty ? (
+        <div className="bg-surface-secondary border border-surface-border rounded-xl p-10 flex flex-col items-center text-center gap-4">
+          <div className="text-brand opacity-60">
+            <BrainIcon />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white mb-1">No learning path yet</p>
+            <p className="text-xs text-gray-400 max-w-xs">
+              {!hasProfile
+                ? "Set your current role and target role in Settings first, then generate your path."
+                : "Claude will analyse trending skills and your career goals to build a ranked curriculum for you."}
+            </p>
+          </div>
+
+          {!hasProfile ? (
+            <button
+              onClick={() => navigate("/settings")}
+              className="bg-brand text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-hover"
+            >
+              Set up my profile →
+            </button>
+          ) : (
+            <button
+              onClick={() => regenerate.mutate()}
+              disabled={regenerate.isPending}
+              className="bg-brand text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-hover disabled:opacity-50"
+            >
+              {regenerate.isPending ? "Generating…" : "Generate my path"}
+            </button>
+          )}
+
+          {isError && (
+            <p className="text-xs text-red-400 mt-1">
+              The recommendations service couldn't be reached. Make sure the backend is running.
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
           {[...skills]
-            .sort((a, b) => b.priority_rank - a.priority_rank)
+            .sort((a, b) => a.priority_rank - b.priority_rank)
             .map((skill) => (
               <div
                 key={skill.name}
