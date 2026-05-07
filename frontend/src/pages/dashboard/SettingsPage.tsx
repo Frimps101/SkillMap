@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "../../api/axios";
-import { getStoredUser } from "../../store/authStore";
+import { getStoredUser, saveAuth } from "../../store/authStore";
+import type { User } from "../../api/auth";
 
 export default function SettingsPage() {
   const user = getStoredUser();
@@ -11,10 +12,11 @@ export default function SettingsPage() {
 
   const saveProfile = useMutation({
     mutationFn: () =>
-      api.patch("/api/auth/me/", {
+      api.patch<User>("/api/auth/me/", {
         profile: { current_role: currentRole, target_role: targetRole },
       }),
-    onSuccess: () => {
+    onSuccess: ({ data }) => {
+      saveAuth(data, localStorage.getItem("access")!, localStorage.getItem("refresh")!);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     },

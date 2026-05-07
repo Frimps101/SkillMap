@@ -17,8 +17,10 @@ class LearningPathView(APIView):
         return Response(LearningPathSerializer(path).data)
 
     def _generate(self, request):
+        current_role = request.data.get("current_role", "")
+        target_role = request.data.get("target_role", "")
         try:
-            result = generate_learning_path(request.user)
+            result = generate_learning_path(request.user, current_role=current_role, target_role=target_role)
         except Exception as exc:
             return Response(
                 {"detail": f"AI generation failed: {exc}"},
@@ -36,8 +38,10 @@ class RegenerateLearningPathView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        current_role = request.data.get("current_role", "")
+        target_role = request.data.get("target_role", "")
         try:
-            result = generate_learning_path(request.user)
+            result = generate_learning_path(request.user, current_role=current_role, target_role=target_role)
         except Exception as exc:
             return Response(
                 {"detail": f"AI generation failed: {exc}"},

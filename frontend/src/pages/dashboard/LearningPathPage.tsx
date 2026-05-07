@@ -1,5 +1,5 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import { api } from "../../api/axios";
 import { getStoredUser } from "../../store/authStore";
 
@@ -23,26 +23,15 @@ interface LearningPath {
   generated_at: string;
 }
 
-function BrainIcon() {
-  return (
-    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9.5 2a2.5 2.5 0 0 1 2.5 2.5v.5h.5a2.5 2.5 0 0 1 0 5H12v.5a2.5 2.5 0 0 1-5 0V10h-.5a2.5 2.5 0 0 1 0-5H7V4.5A2.5 2.5 0 0 1 9.5 2z" />
-      <path d="M14.5 2a2.5 2.5 0 0 0-2.5 2.5v.5h-.5a2.5 2.5 0 0 0 0 5H12v.5a2.5 2.5 0 0 0 5 0V10h.5a2.5 2.5 0 0 0 0-5H17V4.5A2.5 2.5 0 0 0 14.5 2z" />
-      <path d="M12 15v7" />
-      <path d="M8 19h8" />
-    </svg>
-  );
-}
-
 export default function LearningPathPage() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const user = getStoredUser();
 
-  const hasProfile =
-    user?.profile?.current_role?.trim() && user?.profile?.target_role?.trim();
+  const [targetRole, setTargetRole] = useState(
+    user?.profile?.target_role || "Software Engineer"
+  );
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["learning-path"],
     queryFn: async () => {
       const { data } = await api.get("/api/recommendations/");
@@ -50,9 +39,11 @@ export default function LearningPathPage() {
     },
   });
 
-  const regenerate = useMutation({
+  const generate = useMutation({
     mutationFn: async () => {
-      const { data } = await api.post("/api/recommendations/regenerate/");
+      const { data } = await api.post("/api/recommendations/regenerate/", {
+        target_role: targetRole,
+      });
       return data as LearningPath;
     },
     onSuccess: (newData) => {
@@ -74,73 +65,60 @@ export default function LearningPathPage() {
 
   const skills = data?.skills ?? [];
   const generatedAt = data?.generated_at;
-  const isEmpty = !isError && skills.length === 0;
-  const showEmpty = isError || isEmpty;
+  const hasSkills = skills.length > 0;
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-white">Learning Path</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            Your personalized curriculum based on current market demands.
-          </p>
-        </div>
-        {!showEmpty && (
+    <div className="p-6 space-y-6 max-w-2xl mx-auto">
+      <div>
+        <h1 className="text-xl font-semibold text-white">Learning Path</h1>
+        <p className="text-sm text-gray-400 mt-0.5">
+          Your personalized curriculum based on current market demands.
+        </p>
+      </div>
+
+      {/* Role input */}
+      <div className="bg-surface-secondary border border-surface-border rounded-xl p-5 space-y-3">
+        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider text-center">Generate a path for</p>
+        <div className="flex gap-2">
+          <input
+            value={targetRole}
+            onChange={(e) => setTargetRole(e.target.value)}
+            placeholder="e.g. Senior Full-Stack Engineer"
+            className="flex-1 bg-surface border border-surface-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand"
+          />
           <button
-            onClick={() => regenerate.mutate()}
-            disabled={regenerate.isPending}
-            className="text-sm text-gray-400 border border-surface-border px-3 py-1.5 rounded-lg hover:text-white hover:border-gray-500 transition-colors disabled:opacity-50"
+            onClick={() => generate.mutate()}
+            disabled={generate.isPending || !targetRole.trim()}
+            className="flex items-center gap-2 bg-brand text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-hover disabled:opacity-50 whitespace-nowrap"
           >
-            {regenerate.isPending ? "Regenerating…" : "↻ Regenerate"}
+            {generate.isPending && (
+              <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+            )}
+            {generate.isPending ? "Generating…" : hasSkills ? "↻ Regenerate" : "Generate"}
           </button>
+        </div>
+        {generate.isPending && (
+          <p className="text-xs text-brand animate-pulse text-center">
+            Claude is building your path… this takes ~20 seconds
+          </p>
+        )}
+        {generatedAt && !generate.isPending && (
+          <p className="text-xs text-gray-600 text-center">
+            Last generated {new Date(generatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+          </p>
+        )}
+        {generate.isError && (
+          <p className="text-xs text-red-400">
+            Generation failed — check that your <code className="font-mono">ANTHROPIC_API_KEY</code> is set in <code className="font-mono">.env</code> and restart the backend.
+          </p>
         )}
       </div>
 
-      {generatedAt && !showEmpty && (
-        <p className="text-xs text-gray-500 -mt-4">
-          Last generated {new Date(generatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-        </p>
-      )}
-
-      {showEmpty ? (
-        <div className="bg-surface-secondary border border-surface-border rounded-xl p-10 flex flex-col items-center text-center gap-4">
-          <div className="text-brand opacity-60">
-            <BrainIcon />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-white mb-1">No learning path yet</p>
-            <p className="text-xs text-gray-400 max-w-xs">
-              {!hasProfile
-                ? "Set your current role and target role in Settings first, then generate your path."
-                : "Claude will analyse trending skills and your career goals to build a ranked curriculum for you."}
-            </p>
-          </div>
-
-          {!hasProfile ? (
-            <button
-              onClick={() => navigate("/settings")}
-              className="bg-brand text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-hover"
-            >
-              Set up my profile →
-            </button>
-          ) : (
-            <button
-              onClick={() => regenerate.mutate()}
-              disabled={regenerate.isPending}
-              className="bg-brand text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-hover disabled:opacity-50"
-            >
-              {regenerate.isPending ? "Generating…" : "Generate my path"}
-            </button>
-          )}
-
-          {isError && (
-            <p className="text-xs text-red-400 mt-1">
-              The recommendations service couldn't be reached. Make sure the backend is running.
-            </p>
-          )}
-        </div>
-      ) : (
+      {/* Results */}
+      {hasSkills && (
         <div className="space-y-3">
           {[...skills]
             .sort((a, b) => a.priority_rank - b.priority_rank)
