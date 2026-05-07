@@ -14,8 +14,7 @@ export function getStoredUser(): User | null {
 }
 
 export function isLoggedIn(): boolean {
-  // return !!localStorage.getItem("access") && !!_user;
-  return true;
+  return !!localStorage.getItem("access") && !!_user;
 }
 
 export function saveAuth(user: User, access: string, refresh: string) {

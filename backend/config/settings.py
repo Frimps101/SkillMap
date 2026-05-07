@@ -119,11 +119,16 @@ SIMPLE_JWT = {
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 _cors_extra = config("CORS_ALLOWED_ORIGINS", default="", cast=Csv())
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    *[o for o in _cors_extra if o],
-]
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+        *[o for o in _cors_extra if o],
+    ]
 CORS_ALLOW_CREDENTIALS = True
 
 # ── Internals ─────────────────────────────────────────────────────────────────
