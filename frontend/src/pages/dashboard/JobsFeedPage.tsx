@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../../api/axios";
 
 interface Job {
@@ -135,9 +136,8 @@ export default function JobsFeedPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Top bar */}
-      <div className="px-4 py-4 border-b border-surface-border">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-4">
+      <div className="px-14 pt-10 pb-4">
+          <div className="flex items-center justify-between mb-5">
             <div>
               <h1 className="text-xl font-semibold text-white">Jobs Feed</h1>
               <p className="text-sm text-gray-400 mt-0.5">
@@ -270,13 +270,12 @@ export default function JobsFeedPage() {
               )}
             </div>
           )}
-        </div>
       </div>
 
       {/* Job list */}
-      <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4">
+      <div ref={listRef} className="flex-1 overflow-y-auto px-14 pb-14">
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-3 max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 gap-3">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="h-36 bg-surface-secondary rounded-xl animate-pulse" />
             ))}
@@ -289,12 +288,12 @@ export default function JobsFeedPage() {
             </svg>
             <p className="text-base mb-1">No jobs yet</p>
             <p className="text-sm">
-              Go to <span className="text-brand">Source Manager</span> and trigger a scrape to populate the feed.
+              Go to <Link to="/sources" className="text-brand hover">Source Manager</Link> and trigger a scrape to populate the feed.
             </p>
           </div>
         ) : (
           <>
-            <div className={`grid grid-cols-2 gap-3 max-w-6xl mx-auto w-full transition-opacity ${isFetching ? "opacity-60" : "opacity-100"}`}>
+            <div className={`grid grid-cols-2 gap-3 w-full transition-opacity ${isFetching ? "opacity-60" : "opacity-100"}`}>
               {jobs.map((job) => (
                 <a
                   key={job.id}
@@ -337,24 +336,9 @@ export default function JobsFeedPage() {
                     </svg>
                   </div>
 
-                  {/* Badges row */}
-                  <div className="flex items-center gap-1.5 flex-wrap mb-3">
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${CATEGORY_STYLES[job.category] ?? "text-gray-400 bg-gray-400/10"}`}>
-                      {CATEGORY_LABELS[job.category] ?? job.category}
-                    </span>
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${JOB_TYPE_COLORS[job.job_type] ?? "text-gray-400 bg-gray-400/10"}`}>
-                      {job.job_type.replace("_", " ")}
-                    </span>
-                    {job.source_name && (
-                      <span className="text-[10px] text-gray-500 px-2 py-0.5 rounded-full bg-surface-tertiary">
-                        {job.source_name}
-                      </span>
-                    )}
-                  </div>
-
                   {/* Skills */}
                   {job.skills.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-auto">
+                    <div className="flex flex-wrap gap-1.5 mb-3">
                       {job.skills.slice(0, 4).map((s) => (
                         <span key={s.id} className="text-[10px] px-2 py-0.5 bg-surface-tertiary text-gray-300 rounded">
                           {s.name}
@@ -367,13 +351,35 @@ export default function JobsFeedPage() {
                       )}
                     </div>
                   )}
+
+                  {/* Badges + date */}
+                  <div className="flex items-center justify-between gap-2 mt-auto flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${CATEGORY_STYLES[job.category] ?? "text-gray-400 bg-gray-400/10"}`}>
+                        {CATEGORY_LABELS[job.category] ?? job.category}
+                      </span>
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${JOB_TYPE_COLORS[job.job_type] ?? "text-gray-400 bg-gray-400/10"}`}>
+                        {job.job_type.replace("_", " ")}
+                      </span>
+                      {job.source_name && (
+                        <span className="text-[10px] text-gray-500 px-2 py-0.5 rounded-full bg-surface-tertiary">
+                          {job.source_name}
+                        </span>
+                      )}
+                    </div>
+                    {job.posted_at && (
+                      <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                        {new Date(job.posted_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                      </span>
+                    )}
+                  </div>
                 </a>
               ))}
             </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="max-w-6xl mx-auto mt-6 flex items-center justify-between">
+              <div className="mt-6 flex items-center justify-between">
                 <p className="text-xs text-gray-500">
                   Page {page} of {totalPages}
                 </p>

@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import AppLayout from "./components/layout/AppLayout";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
+import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import JobsFeedPage from "./pages/dashboard/JobsFeedPage";
@@ -13,14 +14,16 @@ import SettingsPage from "./pages/dashboard/SettingsPage";
 export default function App() {
   return (
     <Routes>
-      {/* Public routes */}
+      {/* Landing */}
+      <Route path="/" element={<LandingPage />} />
+
+      {/* Public auth routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
       {/* Protected app routes */}
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route index element={<Navigate to="/jobs" replace />} />
           <Route path="/jobs" element={<JobsFeedPage />} />
           <Route path="/skills" element={<SkillsDashboardPage />} />
           <Route path="/learning" element={<LearningPathPage />} />
@@ -30,7 +33,7 @@ export default function App() {
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/jobs" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
