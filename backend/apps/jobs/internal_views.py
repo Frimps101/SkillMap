@@ -3,23 +3,21 @@ Internal HTTP endpoint called by the Flask scraper.
 Protected by a shared INTERNAL_API_KEY header — not exposed to the React frontend.
 """
 
+import logging
+
 from django.conf import settings
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.skills.models import Skill
 from apps.sources.models import Source
 
-from .models import Job, JobSkill
+from .models import Job
 from .serializers import IngestJobSerializer
 from .services import extract_and_save_skills
 
-
-class InternalAPIKeyPermission:
-    def has_permission(self, request, view):
-        key = request.headers.get("X-Internal-Key", "")
-        return key == settings.INTERNAL_API_KEY
+logger = logging.getLogger(__name__)
 
 
 class IngestJobsView(APIView):
@@ -34,16 +32,20 @@ class IngestJobsView(APIView):
         jobs_data = request.data if isinstance(request.data, list) else [request.data]
         created_ids = []
         skipped = 0
+        touched_source_ids = set()
 
         for item in jobs_data:
             serializer = IngestJobSerializer(data=item)
             if not serializer.is_valid():
-                logger.warning("IngestJobSerializer errors: %s | data keys: %s", serializer.errors, list(item.keys()) if isinstance(item, dict) else "?")
+                logger.warning(
+                    "IngestJobSerializer errors: %s | data keys: %s",
+                    serializer.errors,
+                    list(item.keys()) if isinstance(item, dict) else "?",
+                )
                 continue
 
             data = serializer.validated_data
 
-            # Skip jobs without a valid URL
             if not data.get("url") or not data["url"].startswith("http"):
                 skipped += 1
                 continue
@@ -51,6 +53,8 @@ class IngestJobsView(APIView):
             source = None
             if data.get("source_id"):
                 source = Source.objects.filter(id=data["source_id"]).first()
+                if source:
+                    touched_source_ids.add(source.id)
 
             job, created = Job.objects.get_or_create(
                 url=data["url"],
@@ -69,13 +73,19 @@ class IngestJobsView(APIView):
 
             if created:
                 created_ids.append(job.id)
-                # Dispatch async skill extraction — if broker unavailable, skip silently
                 try:
                     extract_and_save_skills.delay(job.id)
                 except Exception as exc:
                     logger.warning("Could not dispatch skill extraction for job %s: %s", job.id, exc)
             else:
                 skipped += 1
+
+        # Mark every source that sent data as active, whether or not jobs were new
+        if touched_source_ids:
+            Source.objects.filter(id__in=touched_source_ids).update(
+                status="active",
+                last_scraped_at=timezone.now(),
+            )
 
         return Response(
             {"created": len(created_ids), "skipped": skipped},

@@ -68,7 +68,7 @@ export default function LearningPathPage() {
   const hasSkills = skills.length > 0;
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl mx-auto">
+    <div className="p-14 space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-white">Learning Path</h1>
         <p className="text-sm text-gray-400 mt-0.5">
@@ -119,20 +119,20 @@ export default function LearningPathPage() {
 
       {/* Results */}
       {hasSkills && (
-        <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
           {[...skills]
             .sort((a, b) => a.priority_rank - b.priority_rank)
             .map((skill) => (
               <div
                 key={skill.name}
-                className="bg-surface-secondary border border-surface-border rounded-xl p-4"
+                className="bg-surface-secondary border border-surface-border rounded-xl p-5"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <span className="w-7 h-7 rounded-full bg-brand/20 text-brand text-xs font-bold flex items-center justify-center flex-shrink-0">
                     {skill.priority_rank}
                   </span>
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-white capitalize">{skill.name}</h3>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-medium text-white capitalize truncate">{skill.name}</h3>
                     <p className="text-xs text-gray-500">{skill.hours_to_proficiency}h to job-ready</p>
                   </div>
                 </div>

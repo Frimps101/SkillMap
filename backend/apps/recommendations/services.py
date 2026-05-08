@@ -26,29 +26,77 @@ _RESOURCES = {
 _HOURS = {"technical": 40, "design": 30, "soft": 15}
 
 
+SKILL_KEYWORDS = {
+    "javascript": "technical", "typescript": "technical", "python": "technical",
+    "java": "technical", "go": "technical", "golang": "technical", "rust": "technical",
+    "react": "technical", "next.js": "technical", "nextjs": "technical",
+    "vue": "technical", "angular": "technical", "svelte": "technical",
+    "node.js": "technical", "nodejs": "technical", "express": "technical",
+    "django": "technical", "flask": "technical", "fastapi": "technical",
+    "postgresql": "technical", "mysql": "technical", "mongodb": "technical",
+    "redis": "technical", "elasticsearch": "technical", "sql": "technical",
+    "graphql": "technical", "rest api": "technical", "docker": "technical",
+    "kubernetes": "technical", "aws": "technical", "gcp": "technical",
+    "azure": "technical", "terraform": "technical", "git": "technical",
+    "ci/cd": "technical", "linux": "technical", "html": "technical", "css": "technical",
+    "tailwind": "technical", "machine learning": "technical", "pytorch": "technical",
+    "react native": "technical", "flutter": "technical", "swift": "technical",
+    "kotlin": "technical", "figma": "design", "sketch": "design",
+    "adobe xd": "design", "photoshop": "design", "illustrator": "design",
+    "framer": "design", "webflow": "design", "ui design": "design",
+    "ux design": "design", "user research": "design", "wireframing": "design",
+    "prototyping": "design", "design systems": "design",
+    "agile": "soft", "scrum": "soft", "communication": "soft", "leadership": "soft",
+}
+
+
+def _scan_descriptions(job_qs, target_role: str) -> dict:
+    """Keyword-scan raw job descriptions when JobSkill table has no data yet."""
+    counts: dict[str, dict] = {}
+    for job in job_qs[:200]:
+        text = job.description.lower()
+        for skill, category in SKILL_KEYWORDS.items():
+            pattern = r"\b" + re.escape(skill) + r"\b"
+            hits = len(re.findall(pattern, text))
+            if hits:
+                if skill not in counts:
+                    counts[skill] = {"category": category, "total": 0}
+                counts[skill]["total"] += hits
+
+    ranked = sorted(counts.items(), key=lambda x: x[1]["total"], reverse=True)[:10]
+    skills = []
+    for rank, (name, data) in enumerate(ranked, start=1):
+        category = data["category"]
+        total = data["total"]
+        skills.append({
+            "name": name,
+            "priority_rank": rank,
+            "reason": f"Mentioned {total} time{'s' if total != 1 else ''} across {target_role} job postings — high employer demand.",
+            "hours_to_proficiency": _HOURS.get(category, 40),
+            "resources": _RESOURCES.get(category, _RESOURCES["technical"]),
+        })
+    return {"raw": "", "skills": skills}
+
+
 def _db_learning_path(target_role: str) -> dict:
     """
-    Build a learning path directly from job + skill data already in the DB.
-    Searches jobs whose title matches the target role, aggregates the skills
-    most frequently required, and returns them ranked by demand.
+    Build a learning path from job data already in the DB.
+    First tries pre-extracted JobSkill records; if empty, scans descriptions directly.
     """
     from apps.jobs.models import Job, JobSkill
 
-    # Build a loose keyword filter from the target role
     keywords = [w for w in re.split(r"\W+", target_role.lower()) if len(w) > 2]
     if not keywords:
         keywords = ["engineer"]
 
-    # Find matching jobs
     job_qs = Job.objects.none()
     for kw in keywords:
         job_qs = job_qs | Job.objects.filter(title__icontains=kw)
 
-    # If no role-specific jobs found, fall back to all jobs
     if not job_qs.exists():
         job_qs = Job.objects.all()
 
-    # Aggregate skills by total frequency across those jobs
+    # Try pre-extracted skills first
     top_skills = (
         JobSkill.objects.filter(job__in=job_qs)
         .values("skill__name", "skill__category")
@@ -56,21 +104,24 @@ def _db_learning_path(target_role: str) -> dict:
         .order_by("-total")[:10]
     )
 
-    skills = []
-    for rank, row in enumerate(top_skills, start=1):
-        name = row["skill__name"]
-        category = row["skill__category"] or "technical"
-        total = row["total"]
-        resources = _RESOURCES.get(category, _RESOURCES["technical"])
-        skills.append({
-            "name": name,
-            "priority_rank": rank,
-            "reason": f"Required in {total} job posting{'s' if total != 1 else ''} for {target_role} roles — consistently in demand.",
-            "hours_to_proficiency": _HOURS.get(category, 40),
-            "resources": resources,
-        })
+    if top_skills.exists():
+        skills = []
+        for rank, row in enumerate(top_skills, start=1):
+            name = row["skill__name"]
+            category = row["skill__category"] or "technical"
+            total = row["total"]
+            skills.append({
+                "name": name,
+                "priority_rank": rank,
+                "reason": f"Required in {total} job posting{'s' if total != 1 else ''} for {target_role} roles — consistently in demand.",
+                "hours_to_proficiency": _HOURS.get(category, 40),
+                "resources": _RESOURCES.get(category, _RESOURCES["technical"]),
+            })
+        return {"raw": "", "skills": skills}
 
-    return {"raw": "", "skills": skills}
+    # No pre-extracted skills — scan descriptions directly
+    logger.info("No JobSkill data found — scanning job descriptions directly for: %s", target_role)
+    return _scan_descriptions(job_qs, target_role)
 
 
 def generate_learning_path(user, current_role: str = "", target_role: str = "") -> dict:
