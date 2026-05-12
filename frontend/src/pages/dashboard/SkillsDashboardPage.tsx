@@ -65,7 +65,7 @@ export default function SkillsDashboardPage() {
   const hasData = skillList.length > 0 || (trending ?? []).length > 0;
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl">
+    <div className="px-14 pt-10 pb-14 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -102,8 +102,8 @@ export default function SkillsDashboardPage() {
         /* Loading skeletons */
         <div className="space-y-6">
           <div className="bg-surface-secondary border border-surface-border rounded-xl p-5 h-64 animate-pulse" />
-          <div className="grid grid-cols-3 gap-3">
-            {Array.from({ length: 6 }).map((_, i) => (
+          <div className="grid grid-cols-4 gap-3">
+            {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="h-28 bg-surface-secondary rounded-xl animate-pulse" />
             ))}
           </div>
@@ -179,7 +179,7 @@ export default function SkillsDashboardPage() {
 
           {/* Skill cards */}
           {skillList.length > 0 ? (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3">
               {skillList.map((skill) => (
                 <div
                   key={skill.id}

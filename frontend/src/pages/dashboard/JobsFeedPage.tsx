@@ -13,6 +13,7 @@ interface Job {
   url: string;
   logo_url: string;
   posted_at: string | null;
+  last_verified_at: string | null;
   source_name: string | null;
   skills: { id: number; name: string; category: string }[];
 }
@@ -61,6 +62,15 @@ const JOB_TYPES = [
   { value: "internship", label: "Internship" },
   { value: "part_time", label: "Part-time" },
 ];
+
+function verifiedLabel(dateStr: string): { text: string; fresh: boolean } {
+  const diffDays = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000);
+  if (diffDays === 0) return { text: "Verified today", fresh: true };
+  if (diffDays === 1) return { text: "Verified yesterday", fresh: true };
+  if (diffDays < 7)   return { text: `Verified ${diffDays}d ago`, fresh: true };
+  if (diffDays < 30)  return { text: `Verified ${Math.floor(diffDays / 7)}w ago`, fresh: false };
+  return { text: `Verified ${Math.floor(diffDays / 30)}mo ago`, fresh: false };
+}
 
 // Build a compact page-number list: [1, …, p-1, p, p+1, …, total]
 function buildPageRange(current: number, total: number): (number | "…")[] {
@@ -367,11 +377,25 @@ export default function JobsFeedPage() {
                         </span>
                       )}
                     </div>
-                    {job.posted_at && (
-                      <span className="text-[10px] text-gray-500 whitespace-nowrap">
-                        {new Date(job.posted_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                      </span>
-                    )}
+                    <div className="flex flex-col items-end gap-0.5">
+                      {job.posted_at && (
+                        <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                          {new Date(job.posted_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                      )}
+                      {job.last_verified_at && (() => {
+                        const { text, fresh } = verifiedLabel(job.last_verified_at);
+                        return (
+                          <span className={`flex items-center gap-1 text-[10px] whitespace-nowrap ${fresh ? "text-emerald-500" : "text-gray-500"}`}>
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                              {fresh && <path d="M9 12l2 2 4-4" />}
+                            </svg>
+                            {text}
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </a>
               ))}
