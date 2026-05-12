@@ -44,6 +44,21 @@ services:
       redis:
         condition: service_healthy
 
+  django-celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: celery -A config.celery worker --loglevel=info
+    volumes:
+      - ./backend:/app
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   celery:
     build:
       context: ./scraper

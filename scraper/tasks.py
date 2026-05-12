@@ -4,6 +4,7 @@ Celery application and task definitions for the scraper service.
 
 import logging
 import os
+import time
 
 import requests
 from celery import Celery
@@ -19,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 REDIS_URL = config("REDIS_URL", default="redis://localhost:6379/0")
 DJANGO_INGEST_URL = config("DJANGO_INGEST_URL", default="http://backend:8000/api/internal/ingest/")
+DJANGO_ACTIVE_JOBS_URL = config("DJANGO_ACTIVE_JOBS_URL", default="http://backend:8000/api/internal/jobs/active/")
+DJANGO_VERIFY_URL = config("DJANGO_VERIFY_URL", default="http://backend:8000/api/internal/jobs/verify/")
 INTERNAL_API_KEY = config("INTERNAL_API_KEY", default="dev-internal-key")
 
 celery_app = Celery("scraper", broker=REDIS_URL, backend=REDIS_URL)
@@ -31,6 +34,10 @@ celery_app.conf.beat_schedule = {
     "update-skill-trends-weekly": {
         "task": "tasks.update_skill_trends",
         "schedule": crontab(minute=0, hour=0, day_of_week="sunday"),
+    },
+    "verify-active-jobs-daily": {
+        "task": "tasks.verify_active_jobs",
+        "schedule": crontab(minute=0, hour=2),  # 02:00 UTC daily
     },
 }
 celery_app.conf.timezone = "UTC"
@@ -125,3 +132,73 @@ def update_skill_trends():
         logger.info("update_skill_trends → Django: %s", resp.status_code)
     except Exception as exc:
         logger.error("update_skill_trends failed: %s", exc)
+
+
+@celery_app.task(name="tasks.verify_active_jobs")
+def verify_active_jobs(stale_days: int = 7):
+    """Re-check active job URLs and report back which are still reachable.
+
+    Fetches jobs not verified in the last `stale_days` days, sends a HEAD
+    request to each URL, then posts results to Django to stamp last_verified_at
+    and mark unreachable listings as inactive.
+    """
+    # 1. Fetch stale active jobs from Django
+    try:
+        resp = requests.get(
+            DJANGO_ACTIVE_JOBS_URL,
+            params={"stale_days": stale_days},
+            headers={"X-Internal-Key": INTERNAL_API_KEY},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        jobs = resp.json()
+    except Exception as exc:
+        logger.error("verify_active_jobs: could not fetch active jobs: %s", exc)
+        return
+
+    if not jobs:
+        logger.info("verify_active_jobs: no stale jobs to verify")
+        return
+
+    logger.info("verify_active_jobs: checking %d jobs", len(jobs))
+
+    verified_urls = []
+    inactive_urls = []
+
+    for job in jobs:
+        url = job.get("url", "")
+        if not url:
+            continue
+
+        try:
+            r = requests.head(url, timeout=10, allow_redirects=True)
+            if r.status_code == 404:
+                inactive_urls.append(url)
+            else:
+                verified_urls.append(url)
+        except requests.exceptions.ConnectionError:
+            # DNS failure or connection refused — treat as gone
+            inactive_urls.append(url)
+        except Exception:
+            # Timeout or other transient error — skip (don't penalise)
+            pass
+
+        # Polite delay to avoid hammering job boards
+        time.sleep(0.3)
+
+    # 2. Post results back to Django
+    if not verified_urls and not inactive_urls:
+        logger.info("verify_active_jobs: no results to report")
+        return
+
+    try:
+        result = requests.post(
+            DJANGO_VERIFY_URL,
+            json={"verified": verified_urls, "inactive": inactive_urls},
+            headers={"X-Internal-Key": INTERNAL_API_KEY},
+            timeout=30,
+        )
+        result.raise_for_status()
+        logger.info("verify_active_jobs: %s", result.json())
+    except Exception as exc:
+        logger.error("verify_active_jobs: failed to post results to Django: %s", exc)

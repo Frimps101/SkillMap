@@ -36,6 +36,8 @@ class Job(models.Model):
     logo_url = models.URLField(blank=True)
     posted_at = models.DateTimeField(null=True, blank=True)
     scraped_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    last_verified_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "jobs"
