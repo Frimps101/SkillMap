@@ -1,11 +1,13 @@
 """
-Internal HTTP endpoint called by the Flask scraper.
+Internal HTTP endpoints called by the Flask scraper.
 Protected by a shared INTERNAL_API_KEY header — not exposed to the React frontend.
 """
 
 import logging
+from datetime import timedelta
 
 from django.conf import settings
+from django.db import models
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
@@ -68,8 +70,14 @@ class IngestJobsView(APIView):
                     "logo_url": data["logo_url"],
                     "posted_at": data["posted_at"],
                     "source": source,
+                    "last_verified_at": timezone.now(),
                 },
             )
+            if not created and not job.is_active:
+                # Job re-appeared in a scrape run — re-activate it
+                job.is_active = True
+                job.last_verified_at = timezone.now()
+                job.save(update_fields=["is_active", "last_verified_at"])
 
             if created:
                 created_ids.append(job.id)
@@ -91,3 +99,70 @@ class IngestJobsView(APIView):
             {"created": len(created_ids), "skipped": skipped},
             status=status.HTTP_201_CREATED,
         )
+
+
+class ActiveJobsView(APIView):
+    """Return active job URLs that are due for re-verification.
+
+    Query param: stale_days (default 7) — only return jobs not verified
+    within that many days (or never verified).
+    """
+
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        key = request.headers.get("X-Internal-Key", "")
+        if key != settings.INTERNAL_API_KEY:
+            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            stale_days = int(request.query_params.get("stale_days", 7))
+        except (TypeError, ValueError):
+            stale_days = 7
+
+        cutoff = timezone.now() - timedelta(days=stale_days)
+        jobs = Job.objects.filter(is_active=True).filter(
+            models.Q(last_verified_at__isnull=True) | models.Q(last_verified_at__lt=cutoff)
+        ).values("id", "url", "last_verified_at")
+
+        return Response(list(jobs))
+
+
+class VerifyJobsView(APIView):
+    """Accept verification results from the scraper.
+
+    Body: {"verified": [...urls...], "inactive": [...urls...]}
+    - verified  → stamp last_verified_at = now()
+    - inactive  → set is_active=False, last_verified_at = now()
+    """
+
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        key = request.headers.get("X-Internal-Key", "")
+        if key != settings.INTERNAL_API_KEY:
+            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+        now = timezone.now()
+        verified_urls = request.data.get("verified", [])
+        inactive_urls = request.data.get("inactive", [])
+
+        verified_count = 0
+        if verified_urls:
+            verified_count = Job.objects.filter(url__in=verified_urls).update(
+                last_verified_at=now
+            )
+
+        inactive_count = 0
+        if inactive_urls:
+            inactive_count = Job.objects.filter(url__in=inactive_urls).update(
+                is_active=False,
+                last_verified_at=now,
+            )
+
+        logger.info(
+            "VerifyJobsView: %d verified, %d marked inactive", verified_count, inactive_count
+        )
+        return Response({"verified": verified_count, "inactive": inactive_count})

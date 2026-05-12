@@ -13,7 +13,7 @@ class JobListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        qs = Job.objects.select_related("source").prefetch_related("skills")
+        qs = Job.objects.select_related("source").prefetch_related("skills").filter(is_active=True)
 
         search = self.request.query_params.get("search")
         if search:
@@ -68,5 +68,6 @@ class TrendingJobsView(generics.ListAPIView):
         return (
             Job.objects.select_related("source")
             .prefetch_related("skills")
+            .filter(is_active=True)
             .order_by("-scraped_at")[:20]
         )

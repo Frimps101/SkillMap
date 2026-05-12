@@ -22,6 +22,8 @@ class JobListSerializer(serializers.ModelSerializer):
             "logo_url",
             "posted_at",
             "scraped_at",
+            "is_active",
+            "last_verified_at",
             "source_name",
             "skills",
         )
