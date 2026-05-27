@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "SkillMap Job Importer",
+  "version": "1.0.1",
+  "description": "Import job listings from LinkedIn, Indeed, and other career pages into SkillMap.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Import job to SkillMap",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "options_page": "options/options.html",
+  "background": {
+    "service_worker": "dist/background.js"
+  },
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*",
+    "https://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["dist/content.js"],
+      "run_at": "document_idle",
+      "exclude_matches": [
+        "http://localhost:5173/*",
+        "http://127.0.0.1:5173/*",
+        "http://localhost:5174/*",
+        "http://127.0.0.1:5174/*"
+      ]
+    }
+  ]
+}

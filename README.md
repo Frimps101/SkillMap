@@ -188,6 +188,7 @@ skillmap/
 │       ├── adzuna.py         ← Adzuna Jobs API
 │       ├── greenhouse.py     ← Greenhouse company boards
 │       └── custom.py         ← CSS-selector based scraper
+├── extension/                ← Chrome extension (import jobs from career sites)
 └── frontend/                 ← React app
     ├── public/               ← Static assets (favicon)
     └── src/
@@ -196,6 +197,19 @@ skillmap/
         ├── components/       ← Layout, sidebar, shared UI
         └── store/            ← Auth state
 ```
+
+---
+
+## Chrome extension
+
+Import jobs from LinkedIn, Indeed, Greenhouse, and other career pages while you browse. See **[extension/README.md](extension/README.md)** for setup:
+
+1. `cd extension && npm install && npm run build`
+2. Chrome → `chrome://extensions` → **Load unpacked** → select the `extension/` folder
+3. Extension options → sign in with your SkillMap account
+4. Open a job posting → extension popup → **Import to SkillMap**
+
+Uses `POST /api/jobs/import/` with your JWT (same auth as the web app).
 
 ---
 

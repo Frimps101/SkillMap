@@ -1,0 +1,15 @@
+{
+  "name": "skillmap-extension",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Import job listings from career sites into SkillMap",
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "watch": "node esbuild.config.mjs --watch"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.0"
+  }
+}

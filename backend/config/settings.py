@@ -130,6 +130,10 @@ else:
         *[o for o in _cors_extra if o],
     ]
 CORS_ALLOW_CREDENTIALS = True
+# Chrome extension origins (chrome-extension://<id>); stable per install
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^chrome-extension://[a-p]{32}$",
+]
 
 # ── Internals ─────────────────────────────────────────────────────────────────
 INTERNAL_API_KEY = config("INTERNAL_API_KEY", default="dev-internal-key")

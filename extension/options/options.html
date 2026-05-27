@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SkillMap Extension Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="logo" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1>SkillMap Extension</h1>
+          <p>Connect to your API and sign in once — imports use your JWT.</p>
+        </div>
+      </header>
+
+      <section class="card">
+        <h2>API</h2>
+        <label class="field">
+          <span>SkillMap API base URL</span>
+          <input type="url" id="apiBaseUrl" placeholder="http://localhost:8000" />
+        </label>
+        <p class="hint">Local dev: <code>http://localhost:8000</code>. Production: your Railway backend URL.</p>
+        <button type="button" id="btn-save-api" class="btn secondary">Save API URL</button>
+      </section>
+
+      <section class="card">
+        <h2>Account</h2>
+        <label class="field">
+          <span>Email</span>
+          <input type="email" id="email" autocomplete="username" />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input type="password" id="password" autocomplete="current-password" />
+        </label>
+        <p id="login-status" class="status hidden"></p>
+        <div class="actions">
+          <button type="button" id="btn-login" class="btn primary">Sign in</button>
+          <button type="button" id="btn-logout" class="btn secondary">Sign out</button>
+        </div>
+      </section>
+
+      <section class="card how">
+        <h2>How to use</h2>
+        <ol>
+          <li>Build the extension: <code>npm run build</code> in the <code>extension/</code> folder.</li>
+          <li>Load unpacked in <code>chrome://extensions</code> → select the <code>extension</code> folder.</li>
+          <li>Open a job posting (LinkedIn, Indeed, Greenhouse, etc.).</li>
+          <li>Click the SkillMap icon → review fields → <strong>Import to SkillMap</strong>.</li>
+        </ol>
+      </section>
+    </div>
+    <script src="../dist/options.js"></script>
+  </body>
+</html>
