@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "apps.skills",
     "apps.sources",
     "apps.recommendations",
+    "apps.cv",
 ]
 
 MIDDLEWARE = [
@@ -147,6 +148,11 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
+# Django tasks get their own queue so the scraper's worker (which shares the
+# same Redis broker but doesn't have Django's code) never consumes them.
+CELERY_TASK_ROUTES = {
+    "apps.*": {"queue": "django"},
+}
 
 # ── Static / Media ────────────────────────────────────────────────────────────
 STATIC_URL = "/static/"

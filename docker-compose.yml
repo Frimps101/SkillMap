@@ -49,7 +49,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
-    command: celery -A config.celery worker --loglevel=info
+    command: celery -A config.celery worker -Q django --loglevel=info
     volumes:
       - ./backend:/app
     env_file: .env

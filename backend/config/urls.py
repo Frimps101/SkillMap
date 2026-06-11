@@ -8,6 +8,7 @@ urlpatterns = [
     path("api/skills/", include("apps.skills.urls")),
     path("api/sources/", include("apps.sources.urls")),
     path("api/recommendations/", include("apps.recommendations.urls")),
+    path("api/cv/", include("apps.cv.urls")),
     # Internal endpoint called by the Flask scraper
     path("api/internal/", include("apps.jobs.internal_urls")),
 ]
