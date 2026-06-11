@@ -46,6 +46,16 @@ Hit **Regenerate** at any time to produce a fresh path as market data changes.
 
 ![Learning Path](frontend/public/screenshots/learning-path.png)
 
+### CV Review (`/cv`)
+Upload your CV (PDF, DOCX, or TXT) and get it scored against **live market data** for your target role — not generic advice. The review shows:
+
+- Which in-demand skills your CV already covers (matched against the live Skill table)
+- Which skills are missing, with the % of current postings that ask for them (e.g. "Docker appears in 38% of postings for your role")
+- Your best-matching jobs in the feed, scored by skill overlap
+- AI narrative review (Claude) with strengths and actionable improvements — keyword-based fallback when no API key is set
+
+Analysis runs in the background on the Django Celery worker. Re-review any time as market data shifts.
+
 ### Source Manager (`/sources`)
 Manage the job data pipelines feeding SkillMap. Built-in sources (Remotive, Greenhouse boards) are pre-configured. You can:
 
