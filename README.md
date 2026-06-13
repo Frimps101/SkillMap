@@ -12,7 +12,8 @@ The tech and design job market moves fast. It's hard to know whether to learn Ty
 
 **Core capabilities:**
 
-- Aggregates tech, design, and UI/UX job listings from Greenhouse, Remotive, Adzuna, and any custom source you add
+- Aggregates tech, design, and UI/UX job listings from Greenhouse, Remotive, Adzuna, Y Combinator (via the Hacker News jobs API), and any custom source you add
+- Imports jobs from Indeed, LinkedIn, and any career page via the Chrome extension (these sites block server-side scraping, so the extension imports from pages you visit)
 - Extracts required skills from every job description using Claude AI (with keyword fallback when no API key is set)
 - Shows trending skills by category with a weekly mentions chart
 - Generates a personalised learning path ranked by priority, estimated hours, and curated resources
