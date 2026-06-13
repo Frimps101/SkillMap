@@ -15,6 +15,7 @@ from scrapers.adzuna import AdzunaScraper
 from scrapers.custom import CustomScraper
 from scrapers.greenhouse import GreenhouseScraper
 from scrapers.remotive import RemotiveScraper
+from scrapers.ycombinator import YCombinatorScraper
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,11 @@ def _post_to_django(jobs: list):
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=120, name="tasks.scrape_source")
 def scrape_source(self, source_id, source_type, url, selector_config):
     try:
-        if source_type == "api":
+        if "ycombinator" in url or "hacker-news" in url:
+            # YC pages are server-rendered with embedded JSON; one scraper
+            # handles them regardless of the source_type the row was saved with.
+            scraper = YCombinatorScraper()
+        elif source_type == "api":
             if "adzuna" in url:
                 scraper = AdzunaScraper()
             elif "greenhouse" in url or "boards-api" in url:

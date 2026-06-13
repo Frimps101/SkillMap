@@ -50,10 +50,17 @@ class JobListView(generics.ListAPIView):
             skill_ids = [s.strip() for s in skills.split(",") if s.strip()]
             qs = qs.filter(skills__id__in=skill_ids).distinct()
 
-        ordering = self.request.query_params.get("ordering", "-scraped_at")
-        allowed_orderings = {"-scraped_at", "scraped_at", "-posted_at", "posted_at"}
-        if ordering in allowed_orderings:
-            qs = qs.order_by(ordering)
+        from django.db.models import F
+
+        # Default: most recently posted first; jobs without a posted date go last
+        ordering = self.request.query_params.get("ordering", "-posted_at")
+        ordering_map = {
+            "-posted_at": [F("posted_at").desc(nulls_last=True), "-scraped_at"],
+            "posted_at": [F("posted_at").asc(nulls_last=True), "-scraped_at"],
+            "-scraped_at": ["-scraped_at"],
+            "scraped_at": ["scraped_at"],
+        }
+        qs = qs.order_by(*ordering_map.get(ordering, ordering_map["-posted_at"]))
 
         return qs
 

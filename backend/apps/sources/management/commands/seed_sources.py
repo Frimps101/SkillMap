@@ -63,6 +63,14 @@ BUILTIN_SOURCES = [
         "frequency": "6h",
         "selector_config": {},
     },
+    {
+        "name": "Y Combinator Jobs",
+        "url": "https://www.ycombinator.com/jobs",
+        "source_type": "html",
+        "status": "active",
+        "frequency": "6h",
+        "selector_config": {},
+    },
 ]
 
 
