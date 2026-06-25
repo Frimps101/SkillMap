@@ -1,7 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../api/axios";
+import { saveJob, unsaveJob } from "../../api/jobs";
 
 interface Job {
   id: number;
@@ -15,6 +16,7 @@ interface Job {
   posted_at: string | null;
   last_verified_at: string | null;
   source_name: string | null;
+  is_saved: boolean;
   skills: { id: number; name: string; category: string }[];
 }
 
@@ -85,6 +87,61 @@ function buildPageRange(current: number, total: number): (number | "…")[] {
   return pages;
 }
 
+function SaveJobButton({
+  job,
+  onToggle,
+  pending,
+}: {
+  job: Job;
+  onToggle: (job: Job) => void;
+  pending: boolean;
+}) {
+  const saved = Boolean(job.is_saved);
+
+  return (
+    <button
+      type="button"
+      aria-label={saved ? "Unsave job" : "Save job"}
+      title={saved ? "Unsave job" : "Save job"}
+      aria-pressed={saved}
+      disabled={pending}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onToggle(job);
+      }}
+      className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+        saved
+          ? "text-brand bg-brand/15 hover:bg-brand/25"
+          : "text-gray-500 hover:text-white hover:bg-surface-tertiary"
+      }`}
+    >
+      {saved ? (
+        <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"
+            fill="#4f6ef7"
+            stroke="#4f6ef7"
+            strokeWidth="1"
+          />
+        </svg>
+      ) : (
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden="true"
+        >
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 export default function JobsFeedPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -123,6 +180,7 @@ export default function JobsFeedPage() {
   }, []);
 
   const activeFilterCount = [category, jobType].filter(Boolean).length;
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["jobs", debouncedSearch, category, jobType, page],
@@ -135,6 +193,33 @@ export default function JobsFeedPage() {
       return data as JobsResponse;
     },
     placeholderData: (prev) => prev, // keep previous page visible while fetching
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async ({ job, save }: { job: Job; save: boolean }) => {
+      if (save) await saveJob(job.id);
+      else await unsaveJob(job.id);
+    },
+    onMutate: async ({ job, save }) => {
+      const key = ["jobs", debouncedSearch, category, jobType, page];
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<JobsResponse>(key);
+      queryClient.setQueryData<JobsResponse>(key, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          results: old.results.map((j) =>
+            j.id === job.id ? { ...j, is_saved: save } : j
+          ),
+        };
+      });
+      return { previous, key };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(context.key, context.previous);
+      }
+    },
   });
 
   const jobs = data?.results ?? [];
@@ -305,11 +390,8 @@ export default function JobsFeedPage() {
           <>
             <div className={`grid grid-cols-2 gap-3 w-full transition-opacity ${isFetching ? "opacity-60" : "opacity-100"}`}>
               {jobs.map((job) => (
-                <a
+                <div
                   key={job.id}
-                  href={job.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="flex flex-col bg-surface-secondary border border-surface-border rounded-xl p-5 min-h-[160px] hover:border-brand/40 transition-colors group"
                 >
                   {/* Card header */}
@@ -333,17 +415,42 @@ export default function JobsFeedPage() {
                         <line x1="10" y1="14" x2="14" y2="14" />
                       </svg>
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <a
+                      href={job.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 min-w-0"
+                    >
                       <h3 className="text-sm font-medium text-white group-hover:text-brand transition-colors leading-snug line-clamp-2">
                         {job.title}
                       </h3>
                       <p className="text-xs text-gray-400 mt-0.5 truncate">
                         {job.company}{job.location ? ` · ${job.location}` : ""}
                       </p>
+                    </a>
+                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                      <SaveJobButton
+                        job={job}
+                        pending={
+                          saveMutation.isPending &&
+                          saveMutation.variables?.job.id === job.id
+                        }
+                        onToggle={(j) =>
+                          saveMutation.mutate({ job: j, save: !j.is_saved })
+                        }
+                      />
+                      <a
+                        href={job.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-lg text-gray-600 hover:text-brand hover:bg-surface-tertiary transition-colors"
+                        aria-label="Open job posting"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M7 17L17 7M7 7h10v10" />
+                        </svg>
+                      </a>
                     </div>
-                    <svg className="text-gray-600 group-hover:text-brand transition-colors flex-shrink-0" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M7 17L17 7M7 7h10v10" />
-                    </svg>
                   </div>
 
                   {/* Skills */}
@@ -363,7 +470,12 @@ export default function JobsFeedPage() {
                   )}
 
                   {/* Badges + date */}
-                  <div className="flex items-center justify-between gap-2 mt-auto flex-wrap">
+                  <a
+                    href={job.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between gap-2 mt-auto flex-wrap"
+                  >
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${CATEGORY_STYLES[job.category] ?? "text-gray-400 bg-gray-400/10"}`}>
                         {CATEGORY_LABELS[job.category] ?? job.category}
@@ -396,8 +508,8 @@ export default function JobsFeedPage() {
                         );
                       })()}
                     </div>
-                  </div>
-                </a>
+                  </a>
+                </div>
               ))}
             </div>
 
