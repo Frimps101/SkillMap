@@ -8,6 +8,7 @@ from .models import Job
 class JobListSerializer(serializers.ModelSerializer):
     skills = SkillSerializer(many=True, read_only=True)
     source_name = serializers.CharField(source="source.name", read_only=True, default=None)
+    is_saved = serializers.BooleanField(read_only=True, default=False)
 
     class Meta:
         model = Job
@@ -26,6 +27,7 @@ class JobListSerializer(serializers.ModelSerializer):
             "last_verified_at",
             "source_name",
             "skills",
+            "is_saved",
         )
 
 

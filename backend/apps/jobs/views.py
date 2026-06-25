@@ -5,9 +5,10 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
+from django.shortcuts import get_object_or_404
 
-from .models import Job
+from .models import Job, SavedJob
 from .serializers import IngestJobSerializer, JobDetailSerializer, JobListSerializer
 from .services import extract_and_save_skills
 
@@ -62,7 +63,8 @@ class JobListView(generics.ListAPIView):
         }
         qs = qs.order_by(*ordering_map.get(ordering, ordering_map["-posted_at"]))
 
-        return qs
+        saved = SavedJob.objects.filter(user=self.request.user, job_id=OuterRef("pk"))
+        return qs.annotate(is_saved=Exists(saved))
 
 
 class JobDetailView(generics.RetrieveAPIView):
@@ -84,6 +86,21 @@ class TrendingJobsView(generics.ListAPIView):
             .filter(is_active=True)
             .order_by("-scraped_at")[:20]
         )
+
+
+class SaveJobView(APIView):
+    """Save or unsave a job for the current user."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        job = get_object_or_404(Job, pk=pk, is_active=True)
+        SavedJob.objects.get_or_create(user=request.user, job=job)
+        return Response({"saved": True})
+
+    def delete(self, request, pk):
+        SavedJob.objects.filter(user=request.user, job_id=pk).delete()
+        return Response({"saved": False})
 
 
 class ImportJobView(APIView):
