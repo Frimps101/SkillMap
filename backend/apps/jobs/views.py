@@ -5,7 +5,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Case, Exists, IntegerField, OuterRef, Q, When
 from django.shortcuts import get_object_or_404
 
 from .models import Job, SavedJob
@@ -65,6 +65,36 @@ class JobListView(generics.ListAPIView):
 
         saved = SavedJob.objects.filter(user=self.request.user, job_id=OuterRef("pk"))
         return qs.annotate(is_saved=Exists(saved))
+
+
+class SavedJobListView(generics.ListAPIView):
+    """Jobs the current user has saved, most recently saved first."""
+
+    serializer_class = JobListSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        saved_ids = list(
+            SavedJob.objects.filter(user=user)
+            .order_by("-saved_at")
+            .values_list("job_id", flat=True)
+        )
+        if not saved_ids:
+            return Job.objects.none()
+
+        order = Case(
+            *[When(pk=pk, then=pos) for pos, pk in enumerate(saved_ids)],
+            output_field=IntegerField(),
+        )
+        saved = SavedJob.objects.filter(user=user, job_id=OuterRef("pk"))
+        return (
+            Job.objects.select_related("source")
+            .prefetch_related("skills")
+            .filter(is_active=True, pk__in=saved_ids)
+            .annotate(is_saved=Exists(saved))
+            .order_by(order)
+        )
 
 
 class JobDetailView(generics.RetrieveAPIView):

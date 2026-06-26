@@ -6,6 +6,7 @@ import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import CVReviewPage from "./pages/dashboard/CVReviewPage";
+import SavedJobsPage from "./pages/dashboard/SavedJobsPage";
 import JobsFeedPage from "./pages/dashboard/JobsFeedPage";
 import LearningPathPage from "./pages/dashboard/LearningPathPage";
 import SkillsDashboardPage from "./pages/dashboard/SkillsDashboardPage";
@@ -26,6 +27,7 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route path="/jobs" element={<JobsFeedPage />} />
+          <Route path="/saved-jobs" element={<SavedJobsPage />} />
           <Route path="/skills" element={<SkillsDashboardPage />} />
           <Route path="/learning" element={<LearningPathPage />} />
           <Route path="/cv" element={<CVReviewPage />} />
