@@ -15,6 +15,15 @@ const NAV_ITEMS = [
     ),
   },
   {
+    to: "/saved-jobs",
+    label: "Saved Jobs",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
+  },
+  {
     to: "/skills",
     label: "Skills Dashboard",
     icon: (
@@ -146,16 +155,6 @@ export default function Sidebar() {
           {dark ? "Light mode" : "Dark mode"}
         </button>
 
-        <a
-          href="https://github.com"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-surface-tertiary transition-colors"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01" />
-          </svg>
-          Support
-        </a>
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-surface-tertiary transition-colors"
