@@ -22,9 +22,31 @@ const STATUS_COLORS: Record<string, string> = {
   paused: "text-gray-400 bg-gray-400/10",
 };
 
+/**
+ * Sources named "Provider — Company" (e.g. Greenhouse boards, one per company)
+ * are grouped under the provider so the list doesn't read as duplicates.
+ */
+function splitName(name: string): { provider: string; label: string } {
+  const match = name.match(/^(.*?)\s+[—–-]\s+(.*)$/);
+  if (match) return { provider: match[1].trim(), label: match[2].trim() };
+  return { provider: name.trim(), label: name.trim() };
+}
+
+function groupSources(sources: Source[]): { provider: string; sources: Source[] }[] {
+  const groups = new Map<string, Source[]>();
+  for (const source of sources) {
+    const { provider } = splitName(source.name);
+    const existing = groups.get(provider);
+    if (existing) existing.push(source);
+    else groups.set(provider, [source]);
+  }
+  return Array.from(groups, ([provider, items]) => ({ provider, sources: items }));
+}
+
 export default function SourceManagerPage() {
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [newSource, setNewSource] = useState<{
     name: string;
     url: string;
@@ -82,6 +104,67 @@ export default function SourceManagerPage() {
   });
 
   const sources = data?.results ?? [];
+  const groups = groupSources(sources);
+
+  function renderRow(source: Source, label: string, nested: boolean) {
+    return (
+      <div
+        key={source.id}
+        className="grid grid-cols-[2fr_1fr_1.5fr_1fr_72px] gap-4 px-4 py-3.5 border-b border-surface-border last:border-0 items-center hover:bg-surface-tertiary/50 transition-colors"
+      >
+        <div className={`min-w-0 ${nested ? "pl-6" : ""}`}>
+          <p className="text-sm text-white font-medium">{label}</p>
+          <p className="text-xs text-gray-500 truncate">{source.url}</p>
+        </div>
+        <div>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+            source.source_type === "api"
+              ? "text-blue-400 bg-blue-400/10"
+              : "text-purple-400 bg-purple-400/10"
+          }`}>
+            {source.source_type.toUpperCase()}
+          </span>
+        </div>
+        <div className="text-xs text-gray-400">
+          {source.last_scraped_at
+            ? new Date(source.last_scraped_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })
+            : "Never"}
+        </div>
+        <div>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[source.status]}`}>
+            {source.status.charAt(0).toUpperCase() + source.status.slice(1)}
+          </span>
+        </div>
+        {/* Actions — own column so they never get squeezed */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => triggerScrape.mutate(source.id)}
+            disabled={triggerScrape.isPending && triggerScrape.variables === source.id}
+            className="p-1.5 rounded-md text-green-400 hover:text-green-300 hover:bg-green-400/10 transition-colors disabled:opacity-40"
+            title="Run scrape now"
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5,3 19,12 5,21" />
+            </svg>
+          </button>
+          <button
+            onClick={() => {
+              if (confirm(`Remove "${source.name}"?`)) deleteSource.mutate(source.id);
+            }}
+            className="p-1.5 rounded-md text-red-400 hover:text-red-300 hover:bg-red-400/10 transition-colors"
+            title="Delete source"
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="3,6 5,6 21,6" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6M14 11v6" />
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-14 space-y-6">
@@ -114,63 +197,87 @@ export default function SourceManagerPage() {
         {sources.length === 0 ? (
           <p className="text-center text-gray-500 text-sm py-12">No sources yet. Add one above.</p>
         ) : (
-          sources.map((source) => (
-            <div
-              key={source.id}
-              className="grid grid-cols-[2fr_1fr_1.5fr_1fr_72px] gap-4 px-4 py-3.5 border-b border-surface-border last:border-0 items-center hover:bg-surface-tertiary/50 transition-colors"
-            >
-              <div className="min-w-0">
-                <p className="text-sm text-white font-medium">{source.name}</p>
-                <p className="text-xs text-gray-500 truncate">{source.url}</p>
-              </div>
-              <div>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                  source.source_type === "api"
-                    ? "text-blue-400 bg-blue-400/10"
-                    : "text-purple-400 bg-purple-400/10"
-                }`}>
-                  {source.source_type.toUpperCase()}
-                </span>
-              </div>
-              <div className="text-xs text-gray-400">
-                {source.last_scraped_at
-                  ? new Date(source.last_scraped_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })
-                  : "Never"}
-              </div>
-              <div>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[source.status]}`}>
-                  {source.status.charAt(0).toUpperCase() + source.status.slice(1)}
-                </span>
-              </div>
-              {/* Actions — own column so they never get squeezed */}
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => triggerScrape.mutate(source.id)}
-                  disabled={triggerScrape.isPending && triggerScrape.variables === source.id}
-                  className="p-1.5 rounded-md text-green-400 hover:text-green-300 hover:bg-green-400/10 transition-colors disabled:opacity-40"
-                  title="Run scrape now"
-                >
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
-                      <polygon points="5,3 19,12 5,21" />
+          groups.map((group) => {
+            if (group.sources.length === 1) {
+              return renderRow(group.sources[0], group.sources[0].name, false);
+            }
+
+            const isCollapsed = collapsed[group.provider];
+            const errorCount = group.sources.filter((s) => s.status === "error").length;
+
+            return (
+              <div key={group.provider} className="border-b border-surface-border last:border-0">
+                <div className="grid grid-cols-[2fr_1fr_1.5fr_1fr_72px] gap-4 px-4 py-2.5 items-center bg-surface-tertiary/30">
+                  <button
+                    onClick={() =>
+                      setCollapsed((c) => ({ ...c, [group.provider]: !c[group.provider] }))
+                    }
+                    className="col-span-4 flex items-center gap-2 text-left min-w-0 group"
+                  >
+                    <span className="text-sm font-medium text-white">{group.provider}</span>
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      className={`text-gray-500 group-hover:text-white transition-transform ${
+                        isCollapsed ? "" : "rotate-90"
+                      }`}
+                    >
+                      <path d="M9 18l6-6-6-6" />
                     </svg>
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm(`Remove "${source.name}"?`)) deleteSource.mutate(source.id);
-                  }}
-                  className="p-1.5 rounded-md text-red-400 hover:text-red-300 hover:bg-red-400/10 transition-colors"
-                  title="Delete source"
-                >
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="3,6 5,6 21,6" />
-                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                      <path d="M10 11v6M14 11v6" />
-                      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                    </svg>
-                </button>
+                    {errorCount > 0 && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium text-red-400 bg-red-400/10">
+                        {errorCount} failing
+                      </span>
+                    )}
+                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => group.sources.forEach((s) => triggerScrape.mutate(s.id))}
+                      disabled={triggerScrape.isPending}
+                      className="p-1.5 rounded-md text-green-400 hover:text-green-300 hover:bg-green-400/10 transition-colors disabled:opacity-40"
+                      title={`Run all ${group.provider} sources`}
+                    >
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="3,3 13,12 3,21" />
+                        <polygon points="12,3 22,12 12,21" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (
+                          confirm(
+                            `Remove all ${group.sources.length} ${group.provider} sources?\n\n${group.sources
+                              .map((s) => `• ${splitName(s.name).label}`)
+                              .join("\n")}`
+                          )
+                        ) {
+                          group.sources.forEach((s) => deleteSource.mutate(s.id));
+                        }
+                      }}
+                      disabled={deleteSource.isPending}
+                      className="p-1.5 rounded-md text-red-400 hover:text-red-300 hover:bg-red-400/10 transition-colors disabled:opacity-40"
+                      title={`Delete all ${group.provider} sources`}
+                    >
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="3,6 5,6 21,6" />
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                        <path d="M10 11v6M14 11v6" />
+                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                {!isCollapsed &&
+                  group.sources.map((source) =>
+                    renderRow(source, splitName(source.name).label, true)
+                  )}
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
