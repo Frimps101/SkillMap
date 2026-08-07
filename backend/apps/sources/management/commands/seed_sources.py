@@ -64,9 +64,9 @@ BUILTIN_SOURCES = [
         "selector_config": {},
     },
     {
-        "name": "Y Combinator Jobs",
+        "name": "Y Combinator",
         "url": "https://www.ycombinator.com/jobs",
-        "source_type": "html",
+        "source_type": "scrape",
         "status": "active",
         "frequency": "6h",
         "selector_config": {},
