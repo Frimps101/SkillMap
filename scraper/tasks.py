@@ -12,6 +12,7 @@ from celery.schedules import crontab
 from decouple import config
 
 from scrapers.adzuna import AdzunaScraper
+from scrapers.ashby import AshbyScraper
 from scrapers.custom import CustomScraper
 from scrapers.greenhouse import GreenhouseScraper
 from scrapers.remotive import RemotiveScraper
@@ -67,6 +68,8 @@ def scrape_source(self, source_id, source_type, url, selector_config):
             # YC pages are server-rendered with embedded JSON; one scraper
             # handles them regardless of the source_type the row was saved with.
             scraper = YCombinatorScraper()
+        elif "ashbyhq.com" in url:
+            scraper = AshbyScraper()
         elif source_type == "api":
             if "adzuna" in url:
                 scraper = AdzunaScraper()

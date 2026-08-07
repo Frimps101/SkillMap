@@ -32,14 +32,6 @@ BUILTIN_SOURCES = [
         "selector_config": {},
     },
     {
-        "name": "Greenhouse — Linear",
-        "url": "https://boards-api.greenhouse.io/v1/boards/linear/jobs",
-        "source_type": "api",
-        "status": "active",
-        "frequency": "6h",
-        "selector_config": {},
-    },
-    {
         "name": "Greenhouse — Vercel",
         "url": "https://boards-api.greenhouse.io/v1/boards/vercel/jobs",
         "source_type": "api",
@@ -55,9 +47,35 @@ BUILTIN_SOURCES = [
         "frequency": "6h",
         "selector_config": {},
     },
+    # Ashby boards — one per company, same pattern as Greenhouse.
+    # Notion and Linear moved here from Greenhouse, whose boards are now empty.
     {
-        "name": "Greenhouse — Notion",
-        "url": "https://boards-api.greenhouse.io/v1/boards/notion/jobs",
+        "name": "Ashby — OpenAI",
+        "url": "https://api.ashbyhq.com/posting-api/job-board/openai",
+        "source_type": "api",
+        "status": "active",
+        "frequency": "6h",
+        "selector_config": {},
+    },
+    {
+        "name": "Ashby — Notion",
+        "url": "https://api.ashbyhq.com/posting-api/job-board/notion",
+        "source_type": "api",
+        "status": "active",
+        "frequency": "6h",
+        "selector_config": {},
+    },
+    {
+        "name": "Ashby — Linear",
+        "url": "https://api.ashbyhq.com/posting-api/job-board/linear",
+        "source_type": "api",
+        "status": "active",
+        "frequency": "6h",
+        "selector_config": {},
+    },
+    {
+        "name": "Ashby — Cohere",
+        "url": "https://api.ashbyhq.com/posting-api/job-board/cohere",
         "source_type": "api",
         "status": "active",
         "frequency": "6h",
