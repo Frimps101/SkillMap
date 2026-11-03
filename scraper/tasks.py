@@ -127,7 +127,7 @@ def scrape_all_sources():
 
 @celery_app.task(name="tasks.update_skill_trends")
 def update_skill_trends():
-    """Aggregate JobSkill counts into SkillTrend rows — runs weekly via Django management cmd."""
+    """Ask Django to aggregate JobSkill counts into SkillTrend rows — runs weekly."""
     try:
         resp = requests.post(
             config(
@@ -137,7 +137,14 @@ def update_skill_trends():
             headers={"X-Internal-Key": INTERNAL_API_KEY},
             timeout=60,
         )
-        logger.info("update_skill_trends → Django: %s", resp.status_code)
+        if resp.ok:
+            logger.info("update_skill_trends → Django: %s %s", resp.status_code, resp.json())
+        else:
+            logger.error(
+                "update_skill_trends → Django returned %s: %s",
+                resp.status_code,
+                resp.text[:200],
+            )
     except Exception as exc:
         logger.error("update_skill_trends failed: %s", exc)
 

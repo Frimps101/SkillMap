@@ -8,8 +8,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-skillmap}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # Not published: a local Postgres already owns 5432 and services reach
+    # this one as db:5432 inside the Compose network. Add a mapping such as
+    # "5433:5432" if you need to attach an external client.
+    expose:
+      - "5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-skillmap}"]
       interval: 5s
@@ -106,6 +109,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      # Vite dev server, not the nginx production stage, so the bind mount
+      # below gives hot reload. Build without a target for the nginx image.
+      target: dev
     restart: unless-stopped
     volumes:
       - ./frontend:/app
@@ -113,6 +119,11 @@ services:
     ports:
       - "5173:5173"
     env_file: .env
+    environment:
+      # Vite's /api proxy runs inside this container, so it reaches the backend
+      # by service name. Deliberately not a VITE_ var: VITE_API_BASE_URL stays
+      # as .env sets it, because the browser resolves that one.
+      API_PROXY_TARGET: http://backend:8000
     depends_on:
       - backend
 

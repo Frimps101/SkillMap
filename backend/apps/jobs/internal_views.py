@@ -8,14 +8,16 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db import models
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.skills.models import Skill, SkillTrend
 from apps.sources.models import Source
 
-from .models import Job
+from .models import Job, JobSkill
 from .serializers import IngestJobSerializer
 from .services import extract_and_save_skills
 
@@ -166,3 +168,58 @@ class VerifyJobsView(APIView):
             "VerifyJobsView: %d verified, %d marked inactive", verified_count, inactive_count
         )
         return Response({"verified": verified_count, "inactive": inactive_count})
+
+
+class UpdateTrendsView(APIView):
+    """Recompute each skill's weekly mentions and snapshot them as SkillTrend rows.
+
+    A mention is one active job posted during the current week that lists the
+    skill. Jobs scraped without a posted date fall back to scraped_at, so they
+    still count. Re-running within the same week overwrites that week's snapshot.
+    """
+
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        key = request.headers.get("X-Internal-Key", "")
+        if key != settings.INTERNAL_API_KEY:
+            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+        today = timezone.now().date()
+        week_start = today - timedelta(days=today.weekday())
+
+        rows = (
+            JobSkill.objects.filter(job__is_active=True)
+            .annotate(posted=Coalesce("job__posted_at", "job__scraped_at"))
+            .filter(posted__date__gte=week_start)
+            .values("skill_id")
+            .annotate(mentions=models.Count("job_id", distinct=True))
+        )
+        counts = {row["skill_id"]: row["mentions"] for row in rows}
+
+        skills = list(Skill.objects.all())
+        for skill in skills:
+            skill.weekly_mentions = counts.get(skill.id, 0)
+        Skill.objects.bulk_update(skills, ["weekly_mentions"])
+
+        for skill_id, mentions in counts.items():
+            SkillTrend.objects.update_or_create(
+                skill_id=skill_id,
+                week_start=week_start,
+                defaults={"mention_count": mentions},
+            )
+
+        logger.info(
+            "UpdateTrendsView: week %s — %d skills scored, %d with mentions",
+            week_start,
+            len(skills),
+            len(counts),
+        )
+        return Response(
+            {
+                "week_start": week_start,
+                "skills_scored": len(skills),
+                "trends_written": len(counts),
+            }
+        )

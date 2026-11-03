@@ -1,9 +1,17 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS deps
 
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
 RUN npm install
+
+# Dev stage: Vite dev server with hot reload, used by docker compose.
+# Source comes from a bind mount, so no COPY here.
+FROM deps AS dev
+EXPOSE 5173
+CMD ["npm", "run", "dev"]
+
+FROM deps AS builder
 
 COPY . .
 
