@@ -35,6 +35,9 @@ frontend/.vite/
 # Docker
 postgres_data/
 
+# Celery beat rewrites this on every run
+scraper/celerybeat-schedule
+
 # IDE
 .DS_Store
 .vscode/
